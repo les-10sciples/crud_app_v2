@@ -20,11 +20,15 @@ else:
     from wrapper_no_db import TodoList as TodoList_NoDB
     db = TodoList_NoDB(app)
 
-@app.route('/tasks', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok"}), 200
+
+@app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     return jsonify({"tasks": db.GetTodolist()}), 200
 
-@app.route('/tasks', methods=['POST'])
+@app.route('/api/tasks', methods=['POST'])
 def add_task():
     data = request.get_json()
     if (not data or 'name' not in data or 'status' not in data or 'description' not in data 
@@ -32,12 +36,12 @@ def add_task():
         return jsonify({"error": "Invalid data"}), 400
     return jsonify({"tasks": db.GetTodolist()}), 201
 
-@app.route('/tasks/<int:id>', methods=['DELETE'])
+@app.route('/api/tasks/<int:id>', methods=['DELETE'])
 def delete_task(id):
     db.RemoveTask(id)
     return jsonify({"tasks": db.GetTodolist()}), 200
 
-@app.route('/tasks/update', methods=['POST'])
+@app.route('/api/tasks/update', methods=['POST'])
 def update_task():
     data = request.get_json()
     if (not data or 'name' not in data or 'status' not in data 
@@ -47,4 +51,4 @@ def update_task():
     return jsonify({"tasks": db.GetTodolist()}), 201
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=80, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
