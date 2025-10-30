@@ -1,9 +1,55 @@
 import argparse
-from flask import Flask, request, jsonify
+import logging
+import sys
+import time
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)  # Ajout pour éviter les erreurs CORS
+
+# --- Logging setup -------------------------------------------------
+# Basic logging config: stream to stdout so containers pick it up
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    stream=sys.stdout,
+)
+
+# Application logger
+logger = logging.getLogger("crud_app_v2")
+logger.setLevel(logging.INFO)
+
+# Reuse the same handlers for Flask's app.logger and werkzeug so all
+# HTTP-related logs go to the same place.
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(handler)
+
+app.logger.handlers = logger.handlers
+app.logger.setLevel(logger.level)
+logging.getLogger("werkzeug").handlers = logger.handlers
+logging.getLogger("werkzeug").setLevel(logger.level)
+
+
+# Simple request timing + HTTP access logging
+@app.before_request
+def _start_timer():
+    g._start_time = time.perf_counter()
+
+
+@app.after_request
+def _log_request(response):
+    try:
+        duration = (time.perf_counter() - g._start_time) * 1000.0
+    except Exception:
+        duration = -1.0
+    remote = request.remote_addr or "-"
+    logger.info("%s %s %s %s %.2fms", remote, request.method, request.path, response.status_code, duration)
+    return response
+
+# ------------------------------------------------------------------
 
 # Argument parser pour choisir DB ou non
 def parse_args():
