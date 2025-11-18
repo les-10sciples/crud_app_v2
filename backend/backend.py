@@ -72,29 +72,45 @@ def health_check():
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    return jsonify({"tasks": db.GetTodolist()}), 200
+    try:
+        return jsonify({"tasks": db.GetTodolist()}), 200
+    except Exception as e:
+        logger.error("Failed to fetch tasks: %s", str(e))
+        return jsonify({"error": "Database unavailable"}), 503
 
 @app.route('/api/tasks', methods=['POST'])
 def add_task():
-    data = request.get_json()
-    if (not data or 'name' not in data or 'status' not in data or 'description' not in data 
-        or not db.CreateTask(data['name'], data['status'], data['description'])):
-        return jsonify({"error": "Invalid data"}), 400
-    return jsonify({"tasks": db.GetTodolist()}), 201
+    try:
+        data = request.get_json()
+        if (not data or 'name' not in data or 'status' not in data or 'description' not in data 
+            or not db.CreateTask(data['name'], data['status'], data['description'])):
+            return jsonify({"error": "Invalid data"}), 400
+        return jsonify({"tasks": db.GetTodolist()}), 201
+    except Exception as e:
+        logger.error("Failed to create task: %s", str(e))
+        return jsonify({"error": "Database unavailable"}), 503
 
 @app.route('/api/tasks/<int:id>', methods=['DELETE'])
 def delete_task(id):
-    db.RemoveTask(id)
-    return jsonify({"tasks": db.GetTodolist()}), 200
+    try:
+        db.RemoveTask(id)
+        return jsonify({"tasks": db.GetTodolist()}), 200
+    except Exception as e:
+        logger.error("Failed to delete task %d: %s", id, str(e))
+        return jsonify({"error": "Database unavailable"}), 503
 
 @app.route('/api/tasks/update', methods=['POST'])
 def update_task():
-    data = request.get_json()
-    if (not data or 'name' not in data or 'status' not in data 
-        or 'description' not in data or not 'id' in data 
-        or not db.UpdateTask(data['id'], data['name'], data['status'], data['description'])):
-        return jsonify({"error": "Invalid data"}), 400
-    return jsonify({"tasks": db.GetTodolist()}), 201
+    try:
+        data = request.get_json()
+        if (not data or 'name' not in data or 'status' not in data 
+            or 'description' not in data or not 'id' in data 
+            or not db.UpdateTask(data['id'], data['name'], data['status'], data['description'])):
+            return jsonify({"error": "Invalid data"}), 400
+        return jsonify({"tasks": db.GetTodolist()}), 201
+    except Exception as e:
+        logger.error("Failed to update task: %s", str(e))
+        return jsonify({"error": "Database unavailable"}), 503
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1,5 +1,7 @@
 import logging
+import time
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import OperationalError, DBAPIError
 
 # Logger for DB access operations
 logger = logging.getLogger("crud_app_v2.db")
@@ -15,6 +17,13 @@ class TodoList:
         else:
             self.app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://me:123@localhost/mydatabase'
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        # Enable connection pool pre-ping to detect stale connections
+        self.app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'pool_recycle': 300,
+            'pool_size': 10,
+            'max_overflow': 20
+        }
 
         self.db = SQLAlchemy(self.app)
 
@@ -32,40 +41,75 @@ class TodoList:
         with self.app.app_context():
             self.db.create_all()
 
+    def _retry_on_db_error(self, func, *args, max_retries=3, **kwargs):
+        """Retry database operations with exponential backoff."""
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except (OperationalError, DBAPIError) as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        "DB operation failed (attempt %d/%d): %s. Retrying in %ds...",
+                        attempt + 1, max_retries, str(e), wait_time
+                    )
+                    time.sleep(wait_time)
+                    # Dispose the connection pool to force new connections
+                    self.db.engine.dispose()
+                else:
+                    logger.error("DB operation failed after %d attempts: %s", max_retries, str(e))
+                    raise
+
     def GetTodolist(self):
-        logger.info("DB: fetching all items")
-        items = self.Item.query.all()
-        return [{"id": item.id, "name": item.name, "status" : ["À faire", "En cours", "Terminé"][item.status], "description" : item.description} for item in items]
+        def _fetch():
+            logger.info("DB: fetching all items")
+            items = self.Item.query.all()
+            return [{"id": item.id, "name": item.name, "status" : ["À faire", "En cours", "Terminé"][item.status], "description" : item.description} for item in items]
+        return self._retry_on_db_error(_fetch)
 
     def CreateTask(self, name, state, description):
         StatusConverter = {"À faire": 0, "En cours": 1, "Terminé": 2}
         if not name or state not in StatusConverter:
             return False
-        logger.info("DB: creating task name=%s state=%s", name, state)
-        item = self.Item(name=name, status=StatusConverter[state], description=description)
-        self.db.session.add(item)
-        self.db.session.commit()
-        return True
+        def _create():
+            logger.info("DB: creating task name=%s state=%s", name, state)
+            item = self.Item(name=name, status=StatusConverter[state], description=description)
+            self.db.session.add(item)
+            self.db.session.commit()
+            return True
+        return self._retry_on_db_error(_create)
 
     def RemoveTask(self, id):
-        logger.info("DB: removing task id=%s", id)
-        item = self.Item.query.get(id)
-        if not item:
-            logger.warning("DB: remove failed, item not found id=%s", id)
-            return False
-        self.db.session.delete(item)
-        self.db.session.commit()
-        return True
+        def _remove():
+            logger.info("DB: removing task id=%s", id)
+            item = self.Item.query.get(id)
+            if not item:
+                logger.warning("DB: remove failed, item not found id=%s", id)
+                return False
+            self.db.session.delete(item)
+            self.db.session.commit()
+            return True
+        try:
+            return self._retry_on_db_error(_remove)
+        except Exception:
+            self.db.session.rollback()
+            raise
 
     def UpdateTask(self, id, name, state, description):
         StatusConverter = {"À faire": 0, "En cours": 1, "Terminé": 2}
-        logger.info("DB: updating task id=%s name=%s state=%s", id, name, state)
-        item = self.Item.query.get(id)
-        if not item or not name or state not in StatusConverter:
-            logger.warning("DB: update failed for id=%s (exists=%s valid_data=%s)", id, bool(item), bool(name and state in StatusConverter))
-            return False
-        item.name = name
-        item.status = StatusConverter[state]  # Correction ici (status et non state)
-        item.description = description
-        self.db.session.commit()
-        return True
+        def _update():
+            logger.info("DB: updating task id=%s name=%s state=%s", id, name, state)
+            item = self.Item.query.get(id)
+            if not item or not name or state not in StatusConverter:
+                logger.warning("DB: update failed for id=%s (exists=%s valid_data=%s)", id, bool(item), bool(name and state in StatusConverter))
+                return False
+            item.name = name
+            item.status = StatusConverter[state]  # Correction ici (status et non state)
+            item.description = description
+            self.db.session.commit()
+            return True
+        try:
+            return self._retry_on_db_error(_update)
+        except Exception:
+            self.db.session.rollback()
+            raise
