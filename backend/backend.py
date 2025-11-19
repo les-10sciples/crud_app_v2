@@ -54,16 +54,22 @@ def _log_request(response):
 # Argument parser pour choisir DB ou non
 def parse_args():
     parser = argparse.ArgumentParser(description="TodoList backend")
-    parser.add_argument('--db-uri', type=str, default=None, help='URI de connexion à la base de données')
+    parser.add_argument('--db-uri', type=str, default=None, help='URI de connexion à la base de données (legacy, uses same DB for read/write)')
+    parser.add_argument('--db-write-uri', type=str, default=None, help='URI de connexion à la base de données pour les écritures')
+    parser.add_argument('--db-read-uri', type=str, default=None, help='URI de connexion à la base de données pour les lectures')
     parser.add_argument('--availability-zone', type=str, default='A', choices=['A', 'B'], help='Availability zone (A or B)')
     return parser.parse_args()
 
 args = parse_args()
 availability_zone = args.availability_zone
 
-if args.db_uri:
+# Determine which URIs to use
+db_write = args.db_write_uri or args.db_uri
+db_read = args.db_read_uri
+
+if db_write:
     from wrapper_db import TodoList
-    db = TodoList(app, db_uri=args.db_uri)
+    db = TodoList(app, db_write_uri=db_write, db_read_uri=db_read)
 else:
     from wrapper_no_db import TodoList as TodoList_NoDB
     db = TodoList_NoDB(app)

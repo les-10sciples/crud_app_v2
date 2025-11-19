@@ -9,13 +9,18 @@ logger.setLevel(logging.INFO)
 
 
 class TodoList:
-    def __init__(self, app_context, db_uri=None):
+    def __init__(self, app_context, db_write_uri=None, db_read_uri=None):
         self.app = app_context
         # Configuration de la base de données PostgreSQL
-        if db_uri:
-            self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-        else:
-            self.app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://me:123@localhost/mydatabase'
+        # Default to same URI if only one is provided
+        default_uri = 'postgresql://me:123@localhost/mydatabase'
+        write_uri = db_write_uri or default_uri
+        read_uri = db_read_uri or db_write_uri or default_uri
+        
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = write_uri
+        self.app.config['SQLALCHEMY_BINDS'] = {
+            'read': read_uri
+        }
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         # Enable connection pool pre-ping to detect stale connections
         self.app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -26,6 +31,7 @@ class TodoList:
         }
 
         self.db = SQLAlchemy(self.app)
+        self.use_separate_read_db = db_read_uri is not None and db_read_uri != write_uri
 
         # Définition du modèle Item
         class Item(self.db.Model):
@@ -62,8 +68,12 @@ class TodoList:
 
     def GetTodolist(self):
         def _fetch():
-            logger.info("DB: fetching all items")
-            items = self.Item.query.all()
+            logger.info("DB: fetching all items from read database")
+            # Use read bind if separate read DB is configured
+            if self.use_separate_read_db:
+                items = self.db.session.query(self.Item).bind_mapper(self.Item, bind='read').all()
+            else:
+                items = self.Item.query.all()
             return [{"id": item.id, "name": item.name, "status" : ["À faire", "En cours", "Terminé"][item.status], "description" : item.description} for item in items]
         return self._retry_on_db_error(_fetch)
 
