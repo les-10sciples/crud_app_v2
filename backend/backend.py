@@ -55,9 +55,11 @@ def _log_request(response):
 def parse_args():
     parser = argparse.ArgumentParser(description="TodoList backend")
     parser.add_argument('--db-uri', type=str, default=None, help='URI de connexion à la base de données')
+    parser.add_argument('--availability-zone', type=str, default='A', choices=['A', 'B'], help='Availability zone (A or B)')
     return parser.parse_args()
 
 args = parse_args()
+availability_zone = args.availability_zone
 
 if args.db_uri:
     from wrapper_db import TodoList
@@ -68,15 +70,15 @@ else:
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok", "availability_zone": availability_zone}), 200
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     try:
-        return jsonify({"tasks": db.GetTodolist()}), 200
+        return jsonify({"tasks": db.GetTodolist(), "availability_zone": availability_zone}), 200
     except Exception as e:
         logger.error("Failed to fetch tasks: %s", str(e))
-        return jsonify({"error": "Database unavailable"}), 503
+        return jsonify({"error": "Database unavailable", "availability_zone": availability_zone}), 503
 
 @app.route('/api/tasks', methods=['POST'])
 def add_task():
@@ -84,20 +86,20 @@ def add_task():
         data = request.get_json()
         if (not data or 'name' not in data or 'status' not in data or 'description' not in data 
             or not db.CreateTask(data['name'], data['status'], data['description'])):
-            return jsonify({"error": "Invalid data"}), 400
-        return jsonify({"tasks": db.GetTodolist()}), 201
+            return jsonify({"error": "Invalid data", "availability_zone": availability_zone}), 400
+        return jsonify({"tasks": db.GetTodolist(), "availability_zone": availability_zone}), 201
     except Exception as e:
         logger.error("Failed to create task: %s", str(e))
-        return jsonify({"error": "Database unavailable"}), 503
+        return jsonify({"error": "Database unavailable", "availability_zone": availability_zone}), 503
 
 @app.route('/api/tasks/<int:id>', methods=['DELETE'])
 def delete_task(id):
     try:
         db.RemoveTask(id)
-        return jsonify({"tasks": db.GetTodolist()}), 200
+        return jsonify({"tasks": db.GetTodolist(), "availability_zone": availability_zone}), 200
     except Exception as e:
         logger.error("Failed to delete task %d: %s", id, str(e))
-        return jsonify({"error": "Database unavailable"}), 503
+        return jsonify({"error": "Database unavailable", "availability_zone": availability_zone}), 503
 
 @app.route('/api/tasks/update', methods=['POST'])
 def update_task():
@@ -106,11 +108,11 @@ def update_task():
         if (not data or 'name' not in data or 'status' not in data 
             or 'description' not in data or not 'id' in data 
             or not db.UpdateTask(data['id'], data['name'], data['status'], data['description'])):
-            return jsonify({"error": "Invalid data"}), 400
-        return jsonify({"tasks": db.GetTodolist()}), 201
+            return jsonify({"error": "Invalid data", "availability_zone": availability_zone}), 400
+        return jsonify({"tasks": db.GetTodolist(), "availability_zone": availability_zone}), 201
     except Exception as e:
         logger.error("Failed to update task: %s", str(e))
-        return jsonify({"error": "Database unavailable"}), 503
+        return jsonify({"error": "Database unavailable", "availability_zone": availability_zone}), 503
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

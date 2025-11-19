@@ -1,14 +1,26 @@
 import { Task } from './types';
 import { getBackendUrl } from './config';
 
+export interface ApiResponse {
+  tasks: Task[];
+  availability_zone?: string;
+}
+
 class ApiService {
   private baseUrl: string | null = null;
+  public onAvailabilityZoneUpdate?: (zone: string) => void;
 
   private async getBaseUrl(): Promise<string> {
     if (!this.baseUrl) {
       this.baseUrl = await getBackendUrl();
     }
     return this.baseUrl;
+  }
+
+  private updateAvailabilityZone(data: any): void {
+    if (data.availability_zone && this.onAvailabilityZoneUpdate) {
+      this.onAvailabilityZoneUpdate(data.availability_zone);
+    }
   }
 
   async getTasks(): Promise<Task[]> {
@@ -18,6 +30,7 @@ class ApiService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
+    this.updateAvailabilityZone(data);
     return data.tasks || [];
   }
 
@@ -35,6 +48,7 @@ class ApiService {
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
     }
     const data = await response.json();
+    this.updateAvailabilityZone(data);
     return data.tasks || [];
   }
 
@@ -52,6 +66,7 @@ class ApiService {
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
     }
     const data = await response.json();
+    this.updateAvailabilityZone(data);
     return data.tasks || [];
   }
 
@@ -64,6 +79,7 @@ class ApiService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
+    this.updateAvailabilityZone(data);
     return data.tasks || [];
   }
 }

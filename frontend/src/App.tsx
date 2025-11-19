@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Task } from "./types";
 import { apiService } from "./api";
+import { getFrontendAvailabilityZone } from "./config";
 
 // CSS pour l'animation du spinner et reset global
 const spinnerStyles = `
@@ -31,8 +32,18 @@ const App = () => {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [frontendAZ, setFrontendAZ] = useState<string>("A");
+  const [backendAZ, setBackendAZ] = useState<string>("-");
 
   useEffect(() => {
+    // Load frontend availability zone from config
+    getFrontendAvailabilityZone().then(zone => setFrontendAZ(zone));
+    
+    // Set up callback for backend AZ updates
+    apiService.onAvailabilityZoneUpdate = (zone: string) => {
+      setBackendAZ(zone);
+    };
+    
     loadTasks();
   }, []);
 
@@ -108,7 +119,7 @@ const App = () => {
         <div 
           style={{ 
             minHeight: "100vh",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "#e5e7eb",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -126,7 +137,7 @@ const App = () => {
               width: "40px",
               height: "40px",
               border: "4px solid #e1e5e9",
-              borderTop: "4px solid #667eea",
+              borderTop: "4px solid #991b1b",
               borderRadius: "50%",
               animation: "spin 1s linear infinite",
               margin: "0 auto 20px",
@@ -151,7 +162,7 @@ const App = () => {
       <div
         style={{
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "#e5e7eb",
           padding: "20px",
           fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         }}
@@ -165,16 +176,85 @@ const App = () => {
         <h1 
           style={{ 
             textAlign: "center", 
-            color: "white", 
-            marginBottom: "40px",
+            color: "#1f2937", 
+            marginBottom: "20px",
             fontSize: "3rem",
             fontWeight: "300",
-            textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+            textShadow: "0 2px 4px rgba(0,0,0,0.1)",
             letterSpacing: "2px"
           }}
         >
           TodoList
         </h1>
+
+        {/* Availability Zone Indicators */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "20px",
+            marginBottom: "40px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              padding: "12px 24px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <span style={{ fontSize: "14px", color: "#666", fontWeight: "600" }}>
+              Frontend AZ:
+            </span>
+            <span
+              style={{
+                backgroundColor: "#991b1b",
+                color: "white",
+                padding: "6px 16px",
+                borderRadius: "8px",
+                fontSize: "16px",
+                fontWeight: "700",
+                minWidth: "32px",
+                textAlign: "center",
+              }}
+            >
+              {frontendAZ}
+            </span>
+          </div>
+          <div
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              padding: "12px 24px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <span style={{ fontSize: "14px", color: "#666", fontWeight: "600" }}>
+              Backend AZ:
+            </span>
+            <span
+              style={{
+                backgroundColor: backendAZ === "-" ? "#9ca3af" : "#991b1b",
+                color: "white",
+                padding: "6px 16px",
+                borderRadius: "8px",
+                fontSize: "16px",
+                fontWeight: "700",
+                minWidth: "32px",
+                textAlign: "center",
+              }}
+            >
+              {backendAZ}
+            </span>
+          </div>
+        </div>
 
         {/* Formulaire d'ajout */}
         <div
@@ -297,7 +377,7 @@ const App = () => {
           <button
             type="submit"
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)",
               color: "white",
               border: "none",
               padding: "16px 32px",
@@ -306,18 +386,18 @@ const App = () => {
               fontWeight: "600",
               cursor: "pointer",
               transition: "all 0.3s ease",
-              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+              boxShadow: "0 4px 15px rgba(153, 27, 27, 0.3)",
             }}
             onMouseOver={(e) => {
               (e.target as HTMLButtonElement).style.transform = "translateY(-2px)";
-              (e.target as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(102, 126, 234, 0.4)";
+              (e.target as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(153, 27, 27, 0.4)";
             }}
             onMouseOut={(e) => {
               (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-              (e.target as HTMLButtonElement).style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.3)";
+              (e.target as HTMLButtonElement).style.boxShadow = "0 4px 15px rgba(153, 27, 27, 0.3)";
             }}
           >
-            ➕ Ajouter la tâche
+            + Ajouter la tâche
           </button>
         </form>
       </div>
@@ -326,11 +406,11 @@ const App = () => {
         <div>
           <h2 
             style={{ 
-              color: "white", 
+              color: "#1f2937", 
               marginBottom: "25px",
               fontSize: "1.8rem",
               fontWeight: "600",
-              textShadow: "0 2px 4px rgba(0,0,0,0.3)"
+              textShadow: "0 2px 4px rgba(0,0,0,0.1)"
             }}
           >
             📋 Mes tâches ({tasks.length})
@@ -482,7 +562,7 @@ const App = () => {
                       <button
                         type="submit"
                         style={{
-                          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          background: "linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)",
                           color: "white",
                           border: "none",
                           padding: "10px 20px",
@@ -491,15 +571,15 @@ const App = () => {
                           fontSize: "14px",
                           fontWeight: "600",
                           transition: "all 0.3s ease",
-                          boxShadow: "0 3px 12px rgba(16, 185, 129, 0.3)",
+                          boxShadow: "0 3px 12px rgba(153, 27, 27, 0.3)",
                         }}
                         onMouseOver={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(-1px)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(16, 185, 129, 0.4)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(153, 27, 27, 0.4)";
                         }}
                         onMouseOut={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(16, 185, 129, 0.3)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(153, 27, 27, 0.3)";
                         }}
                       >
                         ✅ Sauvegarder
@@ -583,7 +663,7 @@ const App = () => {
                       <button
                         onClick={() => startEditing(task)}
                         style={{
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          background: "linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)",
                           color: "white",
                           border: "none",
                           padding: "10px 20px",
@@ -592,15 +672,15 @@ const App = () => {
                           fontSize: "14px",
                           fontWeight: "600",
                           transition: "all 0.3s ease",
-                          boxShadow: "0 3px 12px rgba(102, 126, 234, 0.3)",
+                          boxShadow: "0 3px 12px rgba(153, 27, 27, 0.3)",
                         }}
                         onMouseOver={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(-1px)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.4)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(153, 27, 27, 0.4)";
                         }}
                         onMouseOut={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(102, 126, 234, 0.3)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(153, 27, 27, 0.3)";
                         }}
                       >
                         ✏️ Modifier
@@ -608,7 +688,7 @@ const App = () => {
                       <button
                         onClick={() => handleDeleteTask(task.id)}
                         style={{
-                          background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
+                          background: "linear-gradient(135deg, #7f1d1d 0%, #5f1515 100%)",
                           color: "white",
                           border: "none",
                           padding: "10px 20px",
@@ -617,15 +697,15 @@ const App = () => {
                           fontSize: "14px",
                           fontWeight: "600",
                           transition: "all 0.3s ease",
-                          boxShadow: "0 3px 12px rgba(255, 107, 107, 0.3)",
+                          boxShadow: "0 3px 12px rgba(127, 29, 29, 0.3)",
                         }}
                         onMouseOver={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(-1px)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(255, 107, 107, 0.4)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(127, 29, 29, 0.4)";
                         }}
                         onMouseOut={(e) => {
                           (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(255, 107, 107, 0.3)";
+                          (e.target as HTMLButtonElement).style.boxShadow = "0 3px 12px rgba(127, 29, 29, 0.3)";
                         }}
                       >
                         🗑️ Supprimer
