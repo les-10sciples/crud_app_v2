@@ -71,7 +71,7 @@ class TodoList:
             logger.info("DB: fetching all items from read database")
             # Use read bind if separate read DB is configured
             if self.use_separate_read_db:
-                items = self.db.session.query(self.Item).bind_mapper(self.Item, bind='read').all()
+                items = self.db.session.query(self.Item).execution_options(bind=self.db.get_engine(self.app, bind='read')).all()
             else:
                 items = self.Item.query.all()
             return [{"id": item.id, "name": item.name, "status" : ["À faire", "En cours", "Terminé"][item.status], "description" : item.description} for item in items]
