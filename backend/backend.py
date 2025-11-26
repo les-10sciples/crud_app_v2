@@ -120,5 +120,22 @@ def update_task():
         logger.error("Failed to update task: %s", str(e))
         return jsonify({"error": "Database unavailable", "availability_zone": availability_zone}), 503
 
+@app.route('/api/stress', methods=['GET'])
+def stress_cpu():
+    """Endpoint pour générer de la charge CPU sans toucher à la DB"""
+    iterations = request.args.get('iterations', default=1000000, type=int)
+    result = 0
+    for i in range(iterations):
+        result += i ** 2
+        if i % 100000 == 0:
+            result = result % 1000000
+    logger.info("CPU stress test completed with %d iterations, result: %d", iterations, result)
+    return jsonify({
+        "status": "completed",
+        "iterations": iterations,
+        "result": result,
+        "availability_zone": availability_zone
+    }), 200
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
