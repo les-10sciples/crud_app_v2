@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Task } from "./types";
 import { apiService } from "./api";
-import { getFrontendAvailabilityZone } from "./config";
 
 // CSS pour l'animation du spinner et reset global
 const spinnerStyles = `
@@ -32,18 +31,8 @@ const App = () => {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
-  const [frontendAZ, setFrontendAZ] = useState<string>("A");
-  const [backendAZ, setBackendAZ] = useState<string>("-");
 
   useEffect(() => {
-    // Load frontend availability zone from config
-    getFrontendAvailabilityZone().then(zone => setFrontendAZ(zone));
-    
-    // Set up callback for backend AZ updates
-    apiService.onAvailabilityZoneUpdate = (zone: string) => {
-      setBackendAZ(zone);
-    };
-    
     loadTasks();
   }, []);
 
@@ -184,7 +173,7 @@ const App = () => {
             zIndex: 1000,
           }}
         >
-          Plateforme 2
+          Plateforme 3
         </div>
       <div
         style={{
@@ -205,75 +194,6 @@ const App = () => {
         >
           TodoList
         </h1>
-
-        {/* Availability Zone Indicators */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "20px",
-            marginBottom: "40px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
-              padding: "12px 24px",
-              borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <span style={{ fontSize: "14px", color: "#666", fontWeight: "600" }}>
-              Frontend AZ:
-            </span>
-            <span
-              style={{
-                backgroundColor: "#991b1b",
-                color: "white",
-                padding: "6px 16px",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: "700",
-                minWidth: "32px",
-                textAlign: "center",
-              }}
-            >
-              {frontendAZ}
-            </span>
-          </div>
-          <div
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
-              padding: "12px 24px",
-              borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <span style={{ fontSize: "14px", color: "#666", fontWeight: "600" }}>
-              Backend AZ:
-            </span>
-            <span
-              style={{
-                backgroundColor: backendAZ === "-" ? "#9ca3af" : "#991b1b",
-                color: "white",
-                padding: "6px 16px",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: "700",
-                minWidth: "32px",
-                textAlign: "center",
-              }}
-            >
-              {backendAZ}
-            </span>
-          </div>
-        </div>
 
         {/* Formulaire d'ajout */}
         <div
